@@ -77,15 +77,3 @@ struct __hdmi_cec_msg_t {
 	__u32 para[14];   /* byte */
 	__u32 para_num;   /* byte < 16byte */
 };
-
-extern __bool cec_enable;
-extern __bool cec_standby;
-extern __u32 cec_phy_addr;
-extern __u32 cec_logical_addr;
-extern __u8 cec_count;
-extern __u32 cec_phy_addr;
-
-__s32 hdmi_cec_test(void);
-__s32 hdmi_cec_send_msg(struct __hdmi_cec_msg_t *msg);
-__s32 hdmi_cec_receive_msg(struct __hdmi_cec_msg_t *msg);
-void hdmi_cec_task_loop(void);

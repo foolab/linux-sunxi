@@ -305,6 +305,12 @@ config FB_SUNXI_HDMI
         ---help---
         default m
 
+config FB_SUNXI_HDMI_CEC
+        tristate "HDMI CEC Driver Support(sunxi)"
+        depends on FB_SUNXI_LCD && FB_SUNXI_HDMI
+        ---help---
+        default m
+
 config HDMI_CEC
 	tristate "Consumer Electronics Control (CEC)"
 

@@ -24,6 +24,7 @@
 #include "../disp/sunxi_disp_regs.h"
 #include "hdmi_cec.h"
 
+__u32 cec_phy_addr;
 
 /*
  * ParseEDID()
@@ -480,3 +481,9 @@ ret:
 	kfree(EDID_Buf);
 	return 0;
 }
+
+__u32 get_cec_phy_addr(void)
+{
+  return cec_phy_addr;
+}
+EXPORT_SYMBOL(get_cec_phy_addr);

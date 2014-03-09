@@ -17,6 +17,7 @@
  * MA 02111-1307 USA
  */
 
+#if 0
 #include <mach/clock.h>
 #include "hdmi_cec.h"
 #include "hdmi_core.h"
@@ -28,6 +29,7 @@ __bool cec_standby;
 __u32 cec_phy_addr;
 __u32 cec_logical_addr;
 __u8 cec_count = 30;
+__u8 cec_sent = 0;
 
 /* return us */
 static __s32 hdmi_time_diff(unsigned long long time_before,
@@ -278,7 +280,7 @@ __s32 hdmi_cec_send_msg(struct __hdmi_cec_msg_t *msg)
 			| (msg->follower_addr & 0xf);
 	eom = (msg->opcode_valid) ? HDMI_CEC_MSG_MORE : HDMI_CEC_MSG_END;
 
-	hdmi_cec_enable(1);
+	//	hdmi_cec_enable(1);
 	hdmi_cec_start_bit();                          /* start bit */
 	hdmi_cec_send_byte(header_block, eom, &real_ack);   /* header block */
 
@@ -299,7 +301,7 @@ __s32 hdmi_cec_send_msg(struct __hdmi_cec_msg_t *msg)
 			}
 		}
 	}
-	hdmi_cec_enable(0);
+	//	hdmi_cec_enable(0);
 
 	pr_debug("%s ack:%d\n", __func__, real_ack);
 	return real_ack;
@@ -310,37 +312,47 @@ static __s32 hdmi_cec_wait_for_start_bit(void)
 	__u32 i;
 	__s32 ret = 0;
 
-	pr_debug("%s wait for stbit\n", __func__);
+	pr_warn("%s wait for stbit\n", __func__);
 	while (1) {
-		while (hdmi_cec_read_reg_bit() == 1)
-			;
+	  while (hdmi_cec_read_reg_bit() == 1) {
+	    pr_warn ("eating 1");
+	  }
 
 		for (i = 0; i < 7; i++) {
-			if (hdmi_cec_read_reg_bit() == 1)
+		  if (hdmi_cec_read_reg_bit() == 1) {
+		    pr_warn ("eating 1 more");
 				break;
-
-			hdmi_delay_us(500);
+		  }
+		  hdmi_delay_us(500);
 		}
 
-		if (i < 7)
-			continue;
-
-		while (hdmi_cec_read_reg_bit() == 0)
-			;
-
+		//		if (i < 7) {
+		//		  pr_warn ("i < 7");
+		//			continue;
+		//		}
+		while (hdmi_cec_read_reg_bit() == 0) {
+		  pr_warn ("eating 0");
+		}
 		for (i = 0; i < 4; i++) {
-			if (hdmi_cec_read_reg_bit() == 0)
+		  if (hdmi_cec_read_reg_bit() == 0) {
+		    pr_warn ("eating 0 more");
 				break;
+		  }
 
 			hdmi_delay_us(100);
 		}
 
-		if (i < 4)
-			continue;
-		else
+		//		if (i < 4) {
+		//		  pr_warn("i < 4");
+		//			continue;
+		//		}
+		//		else {
+		  pr_warn ("break");
 			break;
+			//		}
 	}
 
+	pr_warn("out %s", __func__);
 	return ret;
 }
 
@@ -354,7 +366,7 @@ __s32 hdmi_cec_receive_msg(struct __hdmi_cec_msg_t *msg)
 
 	memset(msg, 0, sizeof(struct __hdmi_cec_msg_t));
 
-	hdmi_cec_wait_for_start_bit();
+	//	hdmi_cec_wait_for_start_bit();
 
 	hdmi_cec_receive_byte(&data_byte, &eom);
 
@@ -473,7 +485,7 @@ static __s32 hdmi_cec_send_cmd(__u32 init_addr, __u32 follower_addr, __u32 cmd,
 
 	header_of_msg = ((init_addr & 0xf) << 8) | (follower_addr & 0xf);
 
-	hdmi_cec_enable(1);
+	//	hdmi_cec_enable(1);
 
 	hdmi_cec_start_bit();
 
@@ -495,7 +507,7 @@ static __s32 hdmi_cec_send_cmd(__u32 init_addr, __u32 follower_addr, __u32 cmd,
 
 	}
 
-	hdmi_cec_enable(0);
+	//	hdmi_cec_enable(0);
 
 	return 0;
 }
@@ -519,7 +531,7 @@ __s32 hdmi_cec_test(void)
 	pr_info("###########################hdmi_cec_test\n");
 #if 0
 	pr_info("===enable\n");
-	hdmi_cec_enable(1);
+	//	hdmi_cec_enable(1);
 
 	pr_info("===start bit\n");
 	hdmi_cec_start_bit();
@@ -547,6 +559,17 @@ __s32 hdmi_cec_test(void)
 	 hdmi_cec_send_byte(0x04, 1,&ack);
 	 */
 #if 1
+
+	msg.initiator_addr = HDMI_CEC_LADDR_PAYER1;
+	msg.follower_addr = HDMI_CEC_LADDR_TV;
+	msg.opcode_valid = 1;
+	msg.opcode = HDMI_CEC_OP_IMAGE_VIEW_ON;
+	msg.para_num = 0;
+	hdmi_cec_send_msg(&msg);
+	//	wmb();
+	hdmi_delay_us(100000);
+
+	/*
 	msg.initiator_addr = HDMI_CEC_LADDR_PAYER1;
 	msg.follower_addr = HDMI_CEC_LADDR_TV;
 	msg.opcode_valid = 1;
@@ -555,14 +578,7 @@ __s32 hdmi_cec_test(void)
 	hdmi_cec_send_msg(&msg);
 
 	hdmi_delay_us(100000);
-	msg.initiator_addr = HDMI_CEC_LADDR_PAYER1;
-	msg.follower_addr = HDMI_CEC_LADDR_TV;
-	msg.opcode_valid = 1;
-	msg.opcode = HDMI_CEC_OP_IMAGE_VIEW_ON;
-	msg.para_num = 0;
-	hdmi_cec_send_msg(&msg);
-
-	hdmi_delay_us(100000);
+	*/
 	msg.initiator_addr = HDMI_CEC_LADDR_PAYER1;
 	msg.follower_addr = HDMI_CEC_LADDR_TV;
 	msg.opcode_valid = 1;
@@ -571,8 +587,9 @@ __s32 hdmi_cec_test(void)
 	msg.para[0] = (cec_phy_addr >> 8) & 0xff;
 	msg.para[1] = cec_phy_addr & 0xff;
 	hdmi_cec_send_msg(&msg);
-
+	//	wmb();
 	hdmi_delay_us(100000);
+	/*
 	msg.initiator_addr = HDMI_CEC_LADDR_PAYER1;
 	msg.follower_addr = HDMI_CEC_LADDR_TV;
 	msg.opcode_valid = 1;
@@ -581,6 +598,7 @@ __s32 hdmi_cec_test(void)
 	msg.para[0] = (cec_phy_addr >> 8) & 0xff;
 	msg.para[1] = cec_phy_addr & 0xff;
 	hdmi_cec_send_msg(&msg);
+	*/
 	/*
 	 msg.initiator_addr = HDMI_CEC_LADDR_PAYER1;
 	 msg.follower_addr = HDMI_CEC_LADDR_BROADCAST;
@@ -591,7 +609,7 @@ __s32 hdmi_cec_test(void)
 	 msg.para[1] = 0x00;
 	 hdmi_cec_send_msg(&msg);
 
-
+	*/
 	 msg.initiator_addr = HDMI_CEC_LADDR_PAYER1;
 	 msg.follower_addr = HDMI_CEC_LADDR_TV;
 	 msg.opcode_valid = 1;
@@ -607,8 +625,9 @@ __s32 hdmi_cec_test(void)
 	 msg.para[7] = 'E';
 	 msg.para[8] = 'R';
 	 hdmi_cec_send_msg(&msg);
-
-
+	 //	wmb();
+	 //hdmi_delay_us(4000000);
+	 /*
 	 msg.initiator_addr = HDMI_CEC_LADDR_PAYER1;
 	 msg.follower_addr = HDMI_CEC_LADDR_TV;
 	 msg.opcode_valid = 1;
@@ -645,7 +664,7 @@ __s32 hdmi_cec_test(void)
 	 */
 	/*hdmi_delay_us(4000000);*/
 #endif
-
+	 /*
 	hdmi_delay_us(100000);
 	msg.initiator_addr = HDMI_CEC_LADDR_PAYER1;
 	msg.follower_addr = HDMI_CEC_LADDR_TV;
@@ -655,7 +674,7 @@ __s32 hdmi_cec_test(void)
 	hdmi_cec_send_msg(&msg);
 
 	hdmi_delay_us(100000);
-
+	 */
 	/*while (!hdmi_cec_intercept(&msg));*/
 	/*    i = 0;
 	 while (!hdmi_cec_receive_msg(&msg))  {
@@ -692,7 +711,7 @@ __s32 hdmi_cec_test(void)
 		data = data << 1;
 	}
 #endif
-
+#if 0
 	pr_info("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
 	pr_info("++++++++++++++++  active source ++++++++++++++++++++++++++\n");
 	pr_info("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
@@ -751,8 +770,8 @@ __s32 hdmi_cec_test(void)
 		data = data << 1;
 	}
 
-	hdmi_cec_enable(0);
-
+	//	hdmi_cec_enable(0);
+#endif
 	return 0;
 
 }
@@ -768,6 +787,48 @@ static __s32 hdmi_cec_init(void)
 
 void hdmi_cec_task_loop(void)
 {
+  if (cec_sent < 1) {
+    // Nothing
+    hdmi_cec_enable(1);
+    writel(readl(HDMI_CEC) | 0x400, HDMI_CEC);
+  }
+  else if (cec_sent < 4) {
+    hdmi_cec_test();
+  } else if (cec_sent < 100) {
+    if (hdmi_cec_read_reg_bit() == 0) {
+      pr_warn("Do we have data?");
+      while (hdmi_cec_read_reg_bit() == 1) {
+	;
+      }
+
+      
+    }
+
+    unsigned foo = readl(HDMI_CEC);
+    pr_warn("%i register: 0x%x", cec_sent, foo);
+
+    //    hdmi_cec_wait_for_start_bit();
+    //    struct __hdmi_cec_msg_t msg;
+    //    hdmi_cec_receive_msg(&msg);
+    //    ++cec_sent;
+    //    if (hdmi_cec_read_reg_bit () == 1) {
+    //      pr_warn("I have 1");
+    //      struct __hdmi_cec_msg_t msg;
+    //      hdmi_cec_receive_msg(&msg);
+    //    }
+    //    else {
+    //      pr_warn("I have 0");
+    //    }
+
+    //    hdmi_cec_enable(0);
+  }
+  else {
+    return;
+  }
+
+  ++cec_sent;
+
+  return;
 
 	struct __hdmi_cec_msg_t msg;
 	if (!cec_standby) {
@@ -794,6 +855,7 @@ void hdmi_cec_task_loop(void)
 			hdmi_cec_send_msg(&msg);
 
 			pr_debug("#################HDMI_CEC_LADDR_BROADCAST\n");
+			hdmi_cec_test();
 			break;
 		default:
 
@@ -825,3 +887,325 @@ void hdmi_cec_task_loop(void)
 		cec_count--;
 }
 
+#endif
+
+#include <linux/module.h>
+#include <linux/kthread.h>
+#include <linux/delay.h>
+#include <mach/clock.h>
+#include "../disp/sunxi_disp_regs.h" /* for HDMI_CEC */
+void __iomem *hdmi_base = 0xf1c16000;       /* UGLY */
+#include "hdmi_cec.h"
+
+__u32 get_cec_phy_addr(void);
+static void hdmi_cec_delay_us(__u32 us);
+static __s32 hdmi_cec_send_msg(struct __hdmi_cec_msg_t *msg);
+static void hdmi_cec_send_byte(__u32 data, __u32 eom, __u32 *ack);
+static __s32 hdmi_cec_receive_bit(__bool active, __u32 *data);
+static void hdmi_cec_write_reg_bit(__u32 data);
+static void hdmi_cec_start_bit(void);
+static __s32 hdmi_cec_read_reg_bit(void);
+
+static struct task_struct *cec_task;
+
+static __s32
+hdmi_cec_read_reg_bit(void)    /* 1bit */
+{
+	return (readl(HDMI_CEC) >> 8) & 0x1;
+}
+
+static void
+hdmi_cec_start_bit(void)
+{
+	__u32 low_time, whole_time;
+
+	low_time = HDMI_CEC_START_BIT_LOW_TIME;
+	whole_time = HDMI_CEC_START_BIT_WHOLE_TIME;
+
+	pr_debug("hdmi_cec_start_bit ===\n");
+
+	hdmi_cec_write_reg_bit(0);
+
+	hdmi_cec_delay_us(low_time);
+
+	hdmi_cec_write_reg_bit(1);
+
+	hdmi_cec_delay_us(whole_time - low_time);
+
+	pr_debug("start bit end\n");
+}
+
+/* active: 1: used while send msg; */
+/*         0: used while receive msg */
+static __s32
+hdmi_cec_receive_bit(__bool active, __u32 *data)    /*1bit */
+{
+	__s32 ret = 0;
+
+	if (active) {
+		hdmi_cec_write_reg_bit(0);
+		hdmi_cec_delay_us(200);
+		hdmi_cec_write_reg_bit(1);
+		hdmi_cec_delay_us(800);
+	} else {
+		while (hdmi_cec_read_reg_bit() == 1)
+			;
+		hdmi_cec_delay_us(1000);
+	}
+	*data = hdmi_cec_read_reg_bit();
+
+	if (active)
+		hdmi_cec_delay_us(1400);
+	else
+		hdmi_cec_delay_us(1100);
+
+	return ret;
+
+}
+
+static void
+hdmi_cec_write_reg_bit(__u32 data)    /* 1bit */
+{
+  if (data & 0x1)
+    writel(readl(HDMI_CEC) | 0x200, HDMI_CEC);
+  else
+    writel(readl(HDMI_CEC) & (~0x200), HDMI_CEC);
+}
+
+static void
+hdmi_cec_send_bit(__u32 data)    /* 1bit */
+{
+  __u32 low_time, whole_time;
+
+  pr_debug("hdmi_cec_send_bit===\n");
+
+  low_time = (data == 1) ?
+    HDMI_CEC_DATA_BIT1_LOW_TIME :
+    HDMI_CEC_DATA_BIT0_LOW_TIIME;
+  whole_time = HDMI_CEC_DATA_BIT_WHOLE_TIME;
+
+  hdmi_cec_write_reg_bit(0);
+
+  hdmi_cec_delay_us(low_time);
+
+  hdmi_cec_write_reg_bit(1);
+
+  hdmi_cec_delay_us(whole_time - low_time);
+
+  pr_debug("one bit over\n");
+}
+
+static void
+hdmi_cec_send_byte(__u32 data, __u32 eom, __u32 *ack)  /* 1byte */
+{
+  __u32 i;
+
+  pr_debug("hdmi_cec_send_byte!===\n");
+
+  pr_debug("data bit");
+  for (i = 0; i < 8; i++) {
+    if (data & 0x80)
+      hdmi_cec_send_bit(1);
+    else
+      hdmi_cec_send_bit(0);
+    data = data << 1;
+  }
+
+  pr_debug("bit eom\n");
+  hdmi_cec_send_bit(eom);
+
+  /* todo? */
+  pr_debug("receive ack\n");
+  hdmi_cec_receive_bit(1, ack);
+}
+
+static __s32
+hdmi_cec_send_msg(struct __hdmi_cec_msg_t *msg)
+{
+  __u32 header_block;
+  enum __hdmi_cec_msg_eom eom;
+  __u32 real_ack = 0;
+  __u32 i;
+  __u32 ack = (msg->follower_addr == HDMI_CEC_LADDR_BROADCAST) ?
+    HDMI_CEC_BROADCAST_MSG_ACK : HDMI_CEC_NORMAL_MSG_ACK;
+
+  header_block = ((msg->initiator_addr & 0xf) << 4)
+    | (msg->follower_addr & 0xf);
+  eom = (msg->opcode_valid) ? HDMI_CEC_MSG_MORE : HDMI_CEC_MSG_END;
+
+  hdmi_cec_start_bit();                          /* start bit */
+  hdmi_cec_send_byte(header_block, eom, &real_ack);   /* header block */
+
+  if ((real_ack == ack) && (msg->opcode_valid)) {
+    eom = (msg->para_num != 0) ?
+      HDMI_CEC_MSG_MORE : HDMI_CEC_MSG_END;
+    /* data block: opcode */
+    hdmi_cec_send_byte(msg->opcode, eom, &real_ack);
+
+    if (real_ack == ack) {
+      for (i = 0; i < msg->para_num; i++) {
+	eom = (i == (msg->para_num - 1)) ?
+	  HDMI_CEC_MSG_END :
+	  HDMI_CEC_MSG_MORE;
+	/* data block: parameters */
+	hdmi_cec_send_byte(msg->para[i], eom,
+			   &real_ack);
+      }
+    }
+  }
+
+  pr_debug("%s ack:%d\n", __func__, real_ack);
+  return real_ack;
+}
+
+/* return us */
+static __s32
+hdmi_cec_time_diff(unsigned long long time_before,
+	       unsigned long long time_after)
+{
+  __u32 time_diff = (__u32)(time_after - time_before);
+  return (__u32)(time_diff / 24);
+}
+
+static void
+hdmi_cec_delay_us(__u32 us)
+{
+  unsigned long long t0, t1;
+  pr_debug("==delay %d\n", us);
+  t1 = t0 = aw_clksrc_read(NULL);
+  while (hdmi_cec_time_diff(t0, t1) < us)
+    t1 = aw_clksrc_read(NULL);
+
+  pr_debug("t0=%d,%d\n", (__u32)(t0>>32), (__u32)t0);
+  pr_debug("t1=%d,%d\n", (__u32)(t1>>32), (__u32)t1);
+}
+
+void
+hdmi_cec_start()
+{
+  struct __hdmi_cec_msg_t msg;
+  __u32 cec_phy_addr = get_cec_phy_addr();
+
+  pr_info("Got physical address 0x%x", cec_phy_addr);
+
+  msg.initiator_addr = HDMI_CEC_LADDR_PAYER1;
+  msg.follower_addr = HDMI_CEC_LADDR_TV;
+  msg.opcode_valid = 1;
+  msg.opcode = HDMI_CEC_OP_IMAGE_VIEW_ON;
+  msg.para_num = 0;
+  hdmi_cec_send_msg(&msg);
+
+  hdmi_cec_delay_us(100000);
+
+  msg.initiator_addr = HDMI_CEC_LADDR_PAYER1;
+  msg.follower_addr = HDMI_CEC_LADDR_TV;
+  msg.opcode_valid = 1;
+  msg.opcode = HDMI_CEC_OP_ACTIVE_SOURCE;
+  msg.para_num = 2;
+  msg.para[0] = (cec_phy_addr >> 8) & 0xff;
+  msg.para[1] = cec_phy_addr & 0xff;
+  hdmi_cec_send_msg(&msg);
+  hdmi_cec_delay_us(100000);
+
+  msg.initiator_addr = HDMI_CEC_LADDR_PAYER1;
+  msg.follower_addr = HDMI_CEC_LADDR_TV;
+  msg.opcode_valid = 1;
+  msg.opcode = HDMI_CEC_OP_SET_OSD_NAME;
+  msg.para_num = 9;
+  msg.para[0] = 'A';
+  msg.para[1] = 'L';
+  msg.para[2] = 'L';
+  msg.para[3] = 'W';
+  msg.para[4] = 'I';
+  msg.para[5] = 'N';
+  msg.para[6] = 'N';
+  msg.para[7] = 'E';
+  msg.para[8] = 'R';
+  hdmi_cec_send_msg(&msg);
+  hdmi_cec_delay_us(100000);
+}
+
+static int
+cec_run_thread(void *parg)
+{
+  while (1) {
+    //    hdmi_main_task_loop();
+
+    if (kthread_should_stop()) {
+      pr_info("stopping hdmi CEC thread");
+      break;
+    }
+
+    msleep(3);
+
+    if (kthread_should_stop()) {
+      pr_info("stopping hdmi CEC thread");
+      break;
+    }
+
+    if (hdmi_cec_read_reg_bit() != 0x1) {
+      int x;
+      pr_warn("0");
+
+      for (x = 0; x < 1000; x++) {
+	hdmi_cec_delay_us(100);
+	if (hdmi_cec_read_reg_bit() == 0x1) {
+	  pr_warn("1");
+	}
+	else {
+	  pr_warn("0");
+	}
+      }
+    }
+    else {
+      //      pr_warn("high reg");
+    }
+  }
+
+    //    unsigned foo = readl(HDMI_CEC);
+    //    pr_warn("register: 0x%x", foo);
+
+  return 0;
+}
+
+static int __init
+hdmi_cec_module_init(void)
+{
+  /* Enable CEC */
+  writel(readl(HDMI_CEC) | 0x800, HDMI_CEC);
+
+  hdmi_cec_start();
+
+  //  writel(readl(HDMI_CEC) & (~0x800), HDMI_CEC);
+
+  cec_task = kthread_run(cec_run_thread, (void *)0, "hdmi CEC proc");
+
+  if (IS_ERR(cec_task)) {
+    __s32 err = 0;
+    pr_warn("Unable to start kernel thread %s.\n", "hdmi CEC proc");
+    err = PTR_ERR(cec_task);
+    cec_task = NULL;
+    return err;
+  }
+
+  pr_info("sunxi CEC loaded");
+
+  return 0;
+}
+
+static void __exit hdmi_cec_module_exit(void)
+{
+  if (cec_task) {
+    kthread_stop(cec_task);
+    cec_task = NULL;
+  }
+
+  pr_info("sunxi CEC unloaded");
+}
+
+module_init(hdmi_cec_module_init);
+module_exit(hdmi_cec_module_exit);
+
+MODULE_AUTHOR("Mohammed Sameer <msameer@foolab.org>");
+MODULE_DESCRIPTION("sunxi HDMI CEC driver");
+MODULE_LICENSE("GPL");
